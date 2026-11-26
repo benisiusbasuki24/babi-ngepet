@@ -13,6 +13,7 @@ import {
   Search,
   Trash2,
   Utensils,
+  Users,
   Volume2,
   VolumeX,
   X,
@@ -46,6 +47,7 @@ interface AdminKasirViewProps {
   menu: MenuItem[];
   orders: Order[];
   notifications: AdminNotificationLog[];
+  users: UserProfile[];
   firestoreConnected: boolean;
   soundEnabled: boolean;
   onToggleSound: () => void;
@@ -76,12 +78,13 @@ interface AdminKasirViewProps {
   onLogout: () => Promise<void>;
 }
 
-type AdminSection = 'orders' | 'notifications' | 'menu' | 'receipts';
+type AdminSection = 'orders' | 'notifications' | 'menu' | 'users' | 'receipts';
 
 const SECTION_TITLES: Record<AdminSection, string> = {
   orders: 'Antrean & Kasir POS',
   notifications: 'Notifikasi WhatsApp Admin',
   menu: 'Kelola & Edit Menu',
+  users: 'Daftar Pelanggan Terdaftar',
   receipts: 'Laporan & Kwitansi Lunas',
 };
 
@@ -90,6 +93,7 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
   menu,
   orders,
   notifications,
+  users,
   firestoreConnected,
   soundEnabled,
   onToggleSound,
@@ -368,6 +372,12 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
       label: 'Menu & Harga',
       count: menu.length,
       icon: Utensils,
+    },
+    {
+      id: 'users',
+      label: 'Pelanggan',
+      count: users.length,
+      icon: Users,
     },
     {
       id: 'receipts',
@@ -791,6 +801,73 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* SECTION: DAFTAR PELANGGAN TERDAFTAR */}
+          {activeSection === 'users' && (
+            <div className="rounded-xl border border-slate-200 bg-white overflow-x-auto">
+              <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900">
+                    Daftar Pelanggan Terdaftar ({users.length})
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Pelanggan yang telah mendaftar melalui formulir di aplikasi.
+                  </p>
+                </div>
+              </div>
+
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600">
+                    <th className="px-5 py-3">Nama Pelanggan</th>
+                    <th className="px-4 py-3">Nomor WhatsApp</th>
+                    <th className="px-4 py-3">Alamat Pengantaran</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-5 py-3 text-right">Tanggal Daftar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-5 py-10 text-center text-sm text-slate-500"
+                      >
+                        Belum ada pelanggan yang mendaftar.
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((usr) => (
+                      <tr key={usr.id} className="hover:bg-slate-50/70">
+                        <td className="px-5 py-3.5 font-medium text-slate-900">
+                          {usr.name}
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-xs text-slate-700">
+                          <a
+                            href={`https://wa.me/62${usr.phone.replace(/^0/, '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#15803D] hover:underline"
+                          >
+                            {usr.phone}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3.5 text-xs text-slate-600 max-w-xs">
+                          {usr.address}
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-xs text-slate-500">
+                          {usr.email || '-'}
+                        </td>
+                        <td className="px-5 py-3.5 text-right font-mono text-xs text-slate-500">
+                          {usr.createdAt ? formatDateTime(usr.createdAt) : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 

@@ -74,9 +74,9 @@ service cloud.firestore {
         && data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
         && isValidId(data.uid)
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
-        && data.phone is string && data.phone.size() >= 8 && data.phone.size() <= 25
+        && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 25
         && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
-        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.email is string && data.email.size() >= 0 && data.email.size() <= 200
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -164,21 +164,20 @@ service cloud.firestore {
     // Customer Profiles (PII Isolated)
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isBootstrappedAdmin();
-      allow create: if isVerifiedOwner(userId)
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
         && isValidId(userId)
         && isValidUserProfile(incoming())
         && incoming().uid == request.auth.uid
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerifiedOwner(userId)
+      allow update: if (isOwner(userId) || isAdmin())
         && isValidId(userId)
         && isValidUserProfile(incoming())
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'address', 'updatedAt']);
-      allow delete: if false;
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
     }
 
     // Admin Registry

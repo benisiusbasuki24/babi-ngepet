@@ -125,6 +125,35 @@ export async function saveCustomerProfile(params: {
   }
 }
 
+export function subscribeUsers(
+  onData: (users: UserProfile[]) => void,
+): Unsubscribe {
+  const path = 'users';
+  const q = query(collection(db, path), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: String(data.name || ''),
+          phone: String(data.phone || ''),
+          address: String(data.address || ''),
+          email: String(data.email || ''),
+          role: 'customer' as const,
+          profileComplete: true,
+          createdAt: toIsoString(data.createdAt),
+        } as UserProfile;
+      });
+      onData(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    },
+  );
+}
+
 function isLegacySeedOnly(docIds: string[]): boolean {
   return docIds.length > 0 && docIds.every((id) => LEGACY_MENU_IDS.includes(id));
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut } from 'firebase/auth';
 import { AdminKasirView } from './components/AdminKasirView';
 import { AuthView, type AuthTabMode } from './components/AuthView';
 import { BrandLogo } from './components/BrandLogo';
@@ -23,6 +23,7 @@ import {
   subscribeMenu,
   subscribeNotifications,
   subscribeOrders,
+  subscribeUsers,
   syncDefaultMenuByAdmin,
   toggleMenuAvailabilityInFirestore,
   updateMenuPriceInFirestore,
@@ -60,6 +61,7 @@ export default function App() {
   const [menu, setMenu] = useState<MenuItem[]>(INITIAL_MENU);
   const [orders, setOrders] = useState<Order[]>([]);
   const [notifications, setNotifications] = useState<AdminNotificationLog[]>([]);
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -203,22 +205,60 @@ export default function App() {
     });
 
     let unsubNotifs: (() => void) | null = null;
+    let unsubUsers: (() => void) | null = null;
     if (currentUser.role === 'admin') {
       unsubNotifs = subscribeNotifications((logs) => {
         setNotifications(logs);
       });
+      unsubUsers = subscribeUsers((usrList) => {
+        setUsersList(usrList);
+      });
     } else {
       setNotifications([]);
+      setUsersList([]);
     }
 
     return () => {
       unsubMenu();
       unsubOrders();
       unsubNotifs?.();
+      unsubUsers?.();
     };
   }, [authReady, currentUser, showToast]);
 
-  const handleGoogleSignIn = async (targetRole: AuthTabMode) => {
+  const handleCustomerRegister = async (data: {
+    name: string;
+    phone: string;
+    address: string;
+    email?: string;
+  }) => {
+    let uid = auth.currentUser?.uid;
+    if (!uid) {
+      const cred = await signInAnonymously(auth);
+      uid = cred.user.uid;
+    }
+    await saveCustomerProfile({
+      uid,
+      email: data.email || '',
+      name: data.name,
+      phone: data.phone,
+      address: data.address,
+      isNew: true,
+    });
+    setCurrentUser({
+      id: uid,
+      name: data.name,
+      phone: data.phone,
+      address: data.address,
+      email: data.email || '',
+      role: 'customer',
+      profileComplete: true,
+    });
+    showToast({ text: `Selamat datang, ${data.name}! Pendaftaran berhasil.` });
+    setActiveView('menu');
+  };
+
+  const handleAdminGoogleSignIn = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     const fbUser = result.user;
     const isAdmin = await checkIsAdminUser(
@@ -227,28 +267,14 @@ export default function App() {
       fbUser.emailVerified,
     );
 
-    if (targetRole === 'admin' && !isAdmin) {
+    if (!isAdmin) {
       throw new Error(
         `Akun ${fbUser.email || ''} belum terdaftar sebagai Admin Kasir.`,
       );
     }
 
-    if (isAdmin) {
-      showToast({ text: 'Berhasil masuk ke Console Kasir Admin.' });
-      setActiveView('admin');
-    } else {
-      const profile = await fetchCustomerProfile(fbUser.uid);
-      if (profile) {
-        showToast({ text: `Selamat datang kembali, ${profile.name}!` });
-        setActiveView('menu');
-      } else {
-        setAuthTab('customer');
-        setActiveView('auth');
-        showToast({
-          text: 'Akun Google terhubung! Lengkapi nomor WhatsApp & alamat Anda untuk mulai memesan.',
-        });
-      }
-    }
+    showToast({ text: 'Berhasil masuk ke Console Kasir Admin.' });
+    setActiveView('admin');
   };
 
   const handleSaveCustomerProfile = async (data: {
@@ -488,6 +514,7 @@ export default function App() {
           menu={menu}
           orders={orders}
           notifications={notifications}
+          users={usersList}
           firestoreConnected={authReady && currentUser !== null}
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled((prev) => !prev)}
@@ -564,7 +591,8 @@ export default function App() {
           <AuthView
             initialTab={activeView === 'admin' ? 'admin' : authTab}
             currentUser={currentUser}
-            onGoogleSignIn={handleGoogleSignIn}
+            onCustomerRegister={handleCustomerRegister}
+            onAdminGoogleSignIn={handleAdminGoogleSignIn}
             onSaveProfile={handleSaveCustomerProfile}
             onLogout={handleLogout}
             onNavigateAfterLogin={(role) =>

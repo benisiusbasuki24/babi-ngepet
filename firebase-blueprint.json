@@ -20,14 +20,14 @@
     },
     "UserProfile": {
       "title": "UserProfile",
-      "description": "Profil pelanggan Warung Babi Ngepet (berisi PII, akses terbatas pemilik dan admin).",
+      "description": "Profil pelanggan Warung Babi Ngepet.",
       "type": "object",
       "properties": {
         "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "name": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "phone": { "type": "string", "minLength": 8, "maxLength": 25 },
+        "phone": { "type": "string", "minLength": 6, "maxLength": 25 },
         "address": { "type": "string", "minLength": 3, "maxLength": 400 },
-        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "email": { "type": "string", "maxLength": 200 },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

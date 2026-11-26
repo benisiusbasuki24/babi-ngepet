@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LogOut, ShieldCheck, UserCheck, UserPlus } from 'lucide-react';
+import { LogOut, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { BOOTSTRAPPED_ADMIN_EMAIL } from '../firebase';
 import type { UserProfile } from '../types';
 import { BrandLogo } from './BrandLogo';
@@ -9,7 +9,13 @@ export type AuthTabMode = 'customer' | 'admin';
 interface AuthViewProps {
   initialTab?: AuthTabMode;
   currentUser: UserProfile | null;
-  onGoogleSignIn: (targetRole: AuthTabMode) => Promise<void>;
+  onCustomerRegister: (data: {
+    name: string;
+    phone: string;
+    address: string;
+    email?: string;
+  }) => Promise<void>;
+  onAdminGoogleSignIn: () => Promise<void>;
   onSaveProfile: (data: {
     name: string;
     phone: string;
@@ -22,7 +28,8 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({
   initialTab = 'customer',
   currentUser,
-  onGoogleSignIn,
+  onCustomerRegister,
+  onAdminGoogleSignIn,
   onSaveProfile,
   onLogout,
   onNavigateAfterLogin,
@@ -31,6 +38,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [email, setEmail] = useState('');
   const [editingProfile, setEditingProfile] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -45,19 +53,47 @@ export const AuthView: React.FC<AuthViewProps> = ({
       setName(currentUser.name);
       setPhone(currentUser.phone);
       setAddress(currentUser.address);
+      setEmail(currentUser.email || '');
     }
   }, [currentUser]);
 
-  const handleGoogleClick = async (mode: AuthTabMode) => {
+  const handleCustomerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const cleanAddress = address.trim();
+
+    if (!cleanName || cleanPhone.replace(/\D/g, '').length < 6 || cleanAddress.length < 3) {
+      setErrorMsg('Lengkapi Nama, Nomor WhatsApp aktif, dan Alamat Pengantaran Anda.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onCustomerRegister({
+        name: cleanName,
+        phone: cleanPhone,
+        address: cleanAddress,
+        email: email.trim(),
+      });
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error ? err.message : 'Gagal mendaftarkan profil pelanggan.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminGoogleClick = async () => {
     setErrorMsg('');
     setLoading(true);
     try {
-      await onGoogleSignIn(mode);
+      await onAdminGoogleSignIn();
     } catch (err) {
       setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : 'Gagal masuk dengan akun Google.',
+        err instanceof Error ? err.message : 'Gagal masuk sebagai Admin Kasir.',
       );
     } finally {
       setLoading(false);
@@ -67,8 +103,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const handleSaveProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!name.trim() || phone.replace(/\D/g, '').length < 8 || address.trim().length < 3) {
-      setErrorMsg('Lengkapi nama, nomor WhatsApp aktif, dan alamat pengantaran.');
+    if (!name.trim() || phone.replace(/\D/g, '').length < 6 || address.trim().length < 3) {
+      setErrorMsg('Lengkapi nama, nomor WhatsApp, dan alamat pengantaran.');
       return;
     }
     setLoading(true);
@@ -84,7 +120,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
       }
     } catch (err) {
       setErrorMsg(
-        err instanceof Error ? err.message : 'Gagal menyimpan profil ke Firestore.',
+        err instanceof Error ? err.message : 'Gagal menyimpan profil.',
       );
     } finally {
       setLoading(false);
@@ -102,16 +138,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
           <BrandLogo size={42} />
           <div>
             <p className="text-xs font-medium text-[#6B655E]">
-              Warung Babi Ngepet · Firebase Auth &amp; Firestore
+              Warung Babi Ngepet · Portal Pelanggan &amp; Admin
             </p>
             <h1 className="font-display text-2xl font-bold tracking-tight text-[#171615]">
               {needsProfileCompletion
-                ? 'Lengkapi Registrasi Pelanggan'
+                ? 'Lengkapi Pendaftaran Pelanggan'
                 : currentUser
-                ? 'Profil Akun Terhubung'
+                ? 'Profil Akun Terdaftar'
                 : activeTab === 'admin'
                 ? 'Login Kasir Admin'
-                : 'Masuk & Registrasi Pelanggan'}
+                : 'Pendaftaran & Masuk Pelanggan'}
             </h1>
           </div>
         </div>
@@ -124,17 +160,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <p className="text-xs font-semibold text-[#15803D]">
                   {currentUser.role === 'admin'
                     ? 'Admin Kasir Terverifikasi'
-                    : 'Pelanggan Terdaftar (Firestore Sync)'}
+                    : 'Pelanggan Terdaftar (Formulir Aktif)'}
                 </p>
                 <p className="mt-1 font-display text-lg font-bold text-[#171615]">
                   {currentUser.name}
                 </p>
                 <p className="font-mono text-xs text-[#524E48] mt-0.5">
-                  {currentUser.email}
+                  WhatsApp: {currentUser.phone}
                 </p>
-                {currentUser.phone && (
+                {currentUser.email && (
                   <p className="font-mono text-xs text-[#524E48] mt-0.5">
-                    WhatsApp: {currentUser.phone}
+                    Email: {currentUser.email}
                   </p>
                 )}
                 {currentUser.address && (
@@ -178,12 +214,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
           </div>
         )}
 
-        {/* Registration / Profile Completion Form for Signed-In Customers */}
+        {/* Profile Completion / Edit Form */}
         {(needsProfileCompletion || editingProfile) && currentUser && (
           <form onSubmit={handleSaveProfileSubmit} className="space-y-4">
             <p className="text-xs leading-relaxed text-[#524E48]">
-              Lengkapi data WhatsApp dan alamat pengantaran Anda agar tersimpan di
-              Firestore untuk checkout cepat dan pengiriman kwitansi digital.
+              Perbarui data WhatsApp dan alamat pengantaran Anda.
             </p>
 
             <div>
@@ -199,7 +234,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Nama lengkap Anda"
                 className="w-full rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
               />
             </div>
@@ -217,7 +251,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Contoh: 081234567890"
                 className="w-full rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm font-mono text-[#171615] focus:border-[#C83E2B] focus:outline-none"
               />
             </div>
@@ -235,7 +268,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Jalan, nomor rumah, dan patokan terdekat"
                 className="w-full rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
               />
             </div>
@@ -262,15 +294,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#C83E2B] px-5 py-3 text-sm font-semibold text-white hover:bg-[#B23322] transition-colors disabled:opacity-60"
               >
                 <UserPlus className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  {loading ? 'Menyimpan...' : 'Simpan Profil Pelanggan'}
-                </span>
+                <span>{loading ? 'Menyimpan...' : 'Simpan Profil'}</span>
               </button>
             </div>
           </form>
         )}
 
-        {/* Mode Switcher & Google Sign-In when not editing profile */}
+        {/* Mode Switcher & Forms when not editing profile */}
         {!needsProfileCompletion && !editingProfile && (
           <>
             <div
@@ -292,7 +322,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                     : 'text-[#5E5A54] hover:text-[#171615]'
                 }`}
               >
-                Pelanggan (Masuk / Daftar)
+                Formulir Pelanggan
               </button>
               <button
                 type="button"
@@ -313,13 +343,89 @@ export const AuthView: React.FC<AuthViewProps> = ({
             </div>
 
             {activeTab === 'customer' ? (
-              <div className="space-y-4">
-                <p className="text-sm leading-relaxed text-[#524E48]">
-                  Masuk atau daftar akun pelanggan dengan 1 klik melalui akun Google
-                  Anda untuk menyimpan alamat pengantaran, memantau status pesanan
-                  secara real-time, dan mengakses histori repeat order di semua
-                  perangkat.
-                </p>
+              <form onSubmit={handleCustomerSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 text-xs text-[#524E48]">
+                  <Users className="h-4 w-4 text-[#C83E2B]" />
+                  <span>
+                    Pelanggan wajib mendaftar dengan mengisi form di bawah ini untuk
+                    mulai memesan menu.
+                  </span>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cust-reg-name"
+                    className="block text-xs font-semibold text-[#171615] mb-1"
+                  >
+                    Nama Lengkap *
+                  </label>
+                  <input
+                    id="cust-reg-name"
+                    type="text"
+                    required
+                    maxLength={120}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Masukkan nama Anda"
+                    className="w-full rounded-xl border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cust-reg-phone"
+                    className="block text-xs font-semibold text-[#171615] mb-1"
+                  >
+                    Nomor WhatsApp Aktif *
+                  </label>
+                  <input
+                    id="cust-reg-phone"
+                    type="tel"
+                    required
+                    maxLength={25}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Contoh: 087716443331"
+                    className="w-full rounded-xl border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm font-mono text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cust-reg-address"
+                    className="block text-xs font-semibold text-[#171615] mb-1"
+                  >
+                    Alamat Pengantaran / Catatan Meja *
+                  </label>
+                  <textarea
+                    id="cust-reg-address"
+                    rows={2}
+                    required
+                    maxLength={400}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Jalan, No. Rumah, Patokan, atau No. Meja Warung"
+                    className="w-full rounded-xl border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cust-reg-email"
+                    className="block text-xs font-semibold text-[#171615] mb-1"
+                  >
+                    Email (Opsional)
+                  </label>
+                  <input
+                    id="cust-reg-email"
+                    type="email"
+                    maxLength={200}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nama@domain.com"
+                    className="w-full rounded-xl border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  />
+                </div>
 
                 {errorMsg && (
                   <p className="rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/8 px-3 py-2 text-xs font-medium text-[#DC2626]">
@@ -328,41 +434,26 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 )}
 
                 <button
-                  type="button"
+                  type="submit"
                   disabled={loading}
-                  onClick={() => handleGoogleClick('customer')}
-                  className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#C83E2B] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#B23322] transition-colors disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C83E2B] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#B23322] transition-colors disabled:opacity-60 shadow-md"
                 >
-                  <UserCheck className="h-4 w-4" aria-hidden="true" />
+                  <UserPlus className="h-4 w-4" aria-hidden="true" />
                   <span>
-                    {loading
-                      ? 'Menghubungkan ke Google...'
-                      : currentUser
-                      ? 'Ganti Akun Google Pelanggan'
-                      : 'Masuk / Daftar dengan Google'}
+                    {loading ? 'Mendaftarkan...' : 'Daftar & Mulai Pesan Menu'}
                   </span>
                 </button>
-              </div>
+              </form>
             ) : (
               <div className="space-y-4">
                 <div className="rounded-xl border border-[#E5E2DC] bg-[#F8F7F4] p-4 text-xs text-[#524E48] leading-relaxed flex items-start gap-2.5">
                   <ShieldCheck className="h-4 w-4 text-[#15803D] shrink-0 mt-0.5" />
                   <p>
-                    Panel <strong>Kasir Admin</strong> terhubung dengan Firebase
-                    Authentication. Gunakan akun Google Admin terdaftar (
+                    Portal Kasir Admin menggunakan verifikasi Google Admin (
                     <span className="font-mono">{BOOTSTRAPPED_ADMIN_EMAIL}</span>)
-                    untuk membuka antrean pesanan real-time, kelola stok menu, dan
-                    penerbitan kwitansi.
+                    untuk mengelola antrean pesanan dan katalog menu warung.
                   </p>
                 </div>
-
-                {currentUser && currentUser.role !== 'admin' && (
-                  <p className="rounded-lg border border-[#D97706]/40 bg-[#D97706]/10 px-3 py-2.5 text-xs font-medium text-[#92400E]">
-                    Akun saat ini (<span className="font-mono">{currentUser.email}</span>
-                    ) terdaftar sebagai Pelanggan. Silakan masuk dengan akun Google
-                    Admin.
-                  </p>
-                )}
 
                 {errorMsg && (
                   <p className="rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/8 px-3 py-2 text-xs font-medium text-[#DC2626]">
@@ -373,8 +464,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleGoogleClick('admin')}
-                  className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#171615] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#2E2B29] transition-colors disabled:opacity-60"
+                  onClick={handleAdminGoogleClick}
+                  className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#171615] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#2E2B29] transition-colors disabled:opacity-60 shadow-md"
                 >
                   <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                   <span>

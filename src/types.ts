@@ -98,6 +98,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   profileComplete: boolean;
+  createdAt?: string;
 }
 
 export type AppView = 'menu' | 'track' | 'history' | 'admin' | 'auth';
