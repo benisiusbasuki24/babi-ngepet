@@ -65,7 +65,7 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
-    function isValidUserProfile(data) {
+    function isValidUserCreate(data) {
       return data.keys().hasAll(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
         && data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
         && isValidId(data.uid)
@@ -74,6 +74,15 @@ service cloud.firestore {
         && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
         && data.email is string && data.email.size() >= 0 && data.email.size() <= 200
         && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserUpdate(data) {
+      return data.keys().hasAll(['name', 'phone', 'address', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'phone', 'address', 'updatedAt'])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 25
+        && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
         && data.updatedAt is timestamp;
     }
 
@@ -160,8 +169,8 @@ service cloud.firestore {
     // Customer Profiles (Form-registered / Admin managed)
     match /users/{userId} {
       allow get, list: if true;
-      allow create, update: if isValidId(userId)
-        && isValidUserProfile(incoming());
+      allow create: if isValidId(userId) && isValidUserCreate(incoming());
+      allow update: if isValidId(userId) && isValidUserUpdate(incoming());
       allow delete: if isAdmin();
     }
 
@@ -180,11 +189,10 @@ service cloud.firestore {
       allow update: if isAdmin()
         || (
           isValidId(orderId)
-          && isValidOrderShape(incoming())
           && incoming().id == existing().id
           && incoming().userId == existing().userId
           && incoming().createdAt == existing().createdAt
-          && incoming().updatedAt == request.time
+          && incoming().updatedAt is timestamp
         );
       allow delete: if false;
     }
