@@ -66,24 +66,19 @@ service cloud.firestore {
     }
 
     function isValidUserCreate(data) {
-      return data.keys().hasAll(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
+      return data.keys().hasAll(['uid', 'name', 'phone', 'address', 'email'])
         && isValidId(data.uid)
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
         && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 25
         && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
-        && data.email is string && data.email.size() >= 0 && data.email.size() <= 200
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
+        && data.email is string && data.email.size() >= 0 && data.email.size() <= 200;
     }
 
     function isValidUserUpdate(data) {
-      return data.keys().hasAll(['name', 'phone', 'address', 'updatedAt'])
-        && data.keys().hasOnly(['name', 'phone', 'address', 'updatedAt'])
+      return data.keys().hasAll(['name', 'phone', 'address'])
         && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
         && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 25
-        && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
-        && data.updatedAt is timestamp;
+        && data.address is string && data.address.size() >= 3 && data.address.size() <= 400;
     }
 
     function isValidOrderShape(data) {

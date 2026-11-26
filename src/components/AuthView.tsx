@@ -15,7 +15,7 @@ interface AuthViewProps {
     address: string;
     email?: string;
   }) => Promise<void>;
-  onAdminGoogleSignIn: () => Promise<void>;
+  onAdminLogin: (email: string) => Promise<void>;
   onSaveProfile: (data: {
     name: string;
     phone: string;
@@ -29,7 +29,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   initialTab = 'customer',
   currentUser,
   onCustomerRegister,
-  onAdminGoogleSignIn,
+  onAdminLogin,
   onSaveProfile,
   onLogout,
   onNavigateAfterLogin,
@@ -39,6 +39,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
+  const [adminEmailInput, setAdminEmailInput] = useState(BOOTSTRAPPED_ADMIN_EMAIL);
   const [editingProfile, setEditingProfile] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -86,11 +87,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  const handleAdminGoogleClick = async () => {
+  const handleAdminLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMsg('');
     setLoading(true);
     try {
-      await onAdminGoogleSignIn();
+      await onAdminLogin(adminEmailInput);
     } catch (err) {
       setErrorMsg(
         err instanceof Error ? err.message : 'Gagal masuk sebagai Admin Kasir.',
@@ -445,14 +447,29 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 </button>
               </form>
             ) : (
-              <div className="space-y-4">
+              <form onSubmit={handleAdminLoginSubmit} className="space-y-4">
                 <div className="rounded-xl border border-[#E5E2DC] bg-[#F8F7F4] p-4 text-xs text-[#524E48] leading-relaxed flex items-start gap-2.5">
                   <ShieldCheck className="h-4 w-4 text-[#15803D] shrink-0 mt-0.5" />
                   <p>
-                    Portal Kasir Admin menggunakan verifikasi Google Admin (
-                    <span className="font-mono">{BOOTSTRAPPED_ADMIN_EMAIL}</span>)
-                    untuk mengelola antrean pesanan dan katalog menu warung.
+                    Portal Kasir Admin dikelola oleh <span className="font-mono">{BOOTSTRAPPED_ADMIN_EMAIL}</span> untuk mengelola antrean pesanan dan katalog menu warung.
                   </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="admin-email"
+                    className="block text-xs font-semibold text-[#171615] mb-1"
+                  >
+                    Email Admin Kasir *
+                  </label>
+                  <input
+                    id="admin-email"
+                    type="email"
+                    required
+                    value={adminEmailInput}
+                    onChange={(e) => setAdminEmailInput(e.target.value)}
+                    className="w-full rounded-xl border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2.5 text-sm font-mono text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  />
                 </div>
 
                 {errorMsg && (
@@ -462,19 +479,16 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 )}
 
                 <button
-                  type="button"
+                  type="submit"
                   disabled={loading}
-                  onClick={handleAdminGoogleClick}
                   className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#171615] px-5 py-3.5 text-sm font-semibold text-white hover:bg-[#2E2B29] transition-colors disabled:opacity-60 shadow-md"
                 >
                   <ShieldCheck className="h-4 w-4" aria-hidden="true" />
                   <span>
-                    {loading
-                      ? 'Memverifikasi Admin...'
-                      : 'Masuk Panel Kasir dengan Google Admin'}
+                    {loading ? 'Memverifikasi...' : 'Masuk Panel Kasir Admin'}
                   </span>
                 </button>
-              </div>
+              </form>
             )}
           </>
         )}

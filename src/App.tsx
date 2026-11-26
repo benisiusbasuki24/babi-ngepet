@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { AdminKasirView } from './components/AdminKasirView';
 import { AuthView, type AuthTabMode } from './components/AuthView';
 import { BrandLogo } from './components/BrandLogo';
@@ -10,7 +10,7 @@ import { OrderHistoryView } from './components/OrderHistoryView';
 import { OrderTrackingView } from './components/OrderTrackingView';
 import { StorefrontView } from './components/StorefrontView';
 import { INITIAL_MENU } from './data/initialMenu';
-import { auth, googleProvider } from './firebase';
+import { auth, BOOTSTRAPPED_ADMIN_EMAIL } from './firebase';
 import {
   checkIsAdminUser,
   createOrderAtomicInFirestore,
@@ -108,92 +108,54 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Initial check for local customer session & Firebase Auth observer
+  // Initial check for local admin or customer session
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) {
-        const localUid = localStorage.getItem('bn_customer_uid_v1');
-        if (localUid) {
-          try {
-            const profile = await fetchCustomerProfile(localUid);
-            if (profile && profile.name && profile.phone && profile.address) {
-              setCurrentUser({
-                id: localUid,
-                name: profile.name,
-                phone: profile.phone,
-                address: profile.address,
-                email: profile.email || '',
-                role: 'customer',
-                profileComplete: true,
-              });
-              setAuthReady(true);
-              return;
-            }
-          } catch (e) {
-            console.error('Gagal memuat profil customer lokal:', e);
-          }
-        }
-
-        setCurrentUser(null);
-        setOrders([]);
-        setNotifications([]);
-        seenOrderIdsRef.current = null;
-        setAuthReady(true);
-        return;
-      }
-
+    const localAdmin = localStorage.getItem('bn_admin_session_v1');
+    if (localAdmin) {
       try {
-        const isAdmin = await checkIsAdminUser(
-          fbUser.uid,
-          fbUser.email,
-          fbUser.emailVerified,
-        );
-
-        if (isAdmin) {
-          await seedMenuIfEmptyByAdmin();
+        const parsed = JSON.parse(localAdmin) as { uid: string; email: string };
+        if (parsed.email?.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL.toLowerCase()) {
+          seedMenuIfEmptyByAdmin().catch(() => {});
           setCurrentUser({
-            id: fbUser.uid,
-            name: fbUser.displayName || 'Admin Kasir Warung Babi Ngepet',
+            id: parsed.uid || 'admin_uid_default',
+            name: 'Admin Kasir Warung Babi Ngepet',
             phone: ADMIN_WA_DISPLAY,
             address: 'Kasir Utama Warung Babi Ngepet',
-            email: fbUser.email || '',
+            email: parsed.email,
             role: 'admin',
             profileComplete: true,
           });
+          setAuthReady(true);
           setActiveView('admin');
-        } else {
-          const existingProfile = await fetchCustomerProfile(fbUser.uid);
-          setCurrentUser({
-            id: fbUser.uid,
-            name: existingProfile?.name || fbUser.displayName || 'Pelanggan',
-            phone: existingProfile?.phone || '',
-            address: existingProfile?.address || '',
-            email: fbUser.email || '',
-            role: 'customer',
-            profileComplete: Boolean(
-              existingProfile?.name &&
-                existingProfile?.phone &&
-                existingProfile?.address,
-            ),
-          });
+          return;
         }
-      } catch (err) {
-        console.error('Gagal memverifikasi profil Firebase:', err);
-        setCurrentUser({
-          id: fbUser.uid,
-          name: fbUser.displayName || 'Pelanggan',
-          phone: '',
-          address: '',
-          email: fbUser.email || '',
-          role: 'customer',
-          profileComplete: false,
-        });
-      } finally {
-        setAuthReady(true);
+      } catch {
+        // ignore
       }
-    });
+    }
 
-    return () => unsubscribe();
+    const localUid = localStorage.getItem('bn_customer_uid_v1');
+    if (localUid) {
+      fetchCustomerProfile(localUid)
+        .then((profile) => {
+          if (profile && profile.name && profile.phone && profile.address) {
+            setCurrentUser({
+              id: localUid,
+              name: profile.name,
+              phone: profile.phone,
+              address: profile.address,
+              email: profile.email || '',
+              role: 'customer',
+              profileComplete: true,
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setAuthReady(true));
+      return;
+    }
+
+    setAuthReady(true);
   }, []);
 
   // Real-time Firestore listeners (attached strictly when authReady && currentUser != null)
@@ -281,21 +243,27 @@ export default function App() {
     setActiveView('menu');
   };
 
-  const handleAdminGoogleSignIn = async () => {
-    const result = await signInWithPopup(auth, googleProvider);
-    const fbUser = result.user;
-    const isAdmin = await checkIsAdminUser(
-      fbUser.uid,
-      fbUser.email,
-      fbUser.emailVerified,
+  const handleAdminLogin = async (emailInput: string) => {
+    const cleanEmail = emailInput.trim().toLowerCase();
+    if (cleanEmail !== BOOTSTRAPPED_ADMIN_EMAIL.toLowerCase()) {
+      throw new Error(`Email ${cleanEmail} bukan Admin terverifikasi Warung Babi Ngepet.`);
+    }
+    const adminUid = `admin_uid_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+    localStorage.setItem(
+      'bn_admin_session_v1',
+      JSON.stringify({ uid: adminUid, email: cleanEmail }),
     );
 
-    if (!isAdmin) {
-      throw new Error(
-        `Akun ${fbUser.email || ''} belum terdaftar sebagai Admin Kasir.`,
-      );
-    }
-
+    await seedMenuIfEmptyByAdmin();
+    setCurrentUser({
+      id: adminUid,
+      name: 'Admin Kasir Warung Babi Ngepet',
+      phone: ADMIN_WA_DISPLAY,
+      address: 'Kasir Utama Warung Babi Ngepet',
+      email: cleanEmail,
+      role: 'admin',
+      profileComplete: true,
+    });
     showToast({ text: 'Berhasil masuk ke Console Kasir Admin.' });
     setActiveView('admin');
   };
@@ -329,12 +297,13 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem('bn_customer_uid_v1');
+    localStorage.removeItem('bn_admin_session_v1');
     try {
       await signOut(auth);
     } catch {
       // Ignore if not signed in with firebase auth
     }
-    localStorage.removeItem('bn_customer_uid_v1');
     setCurrentUser(null);
     setOrders([]);
     setNotifications([]);
@@ -621,7 +590,7 @@ export default function App() {
             initialTab={activeView === 'admin' ? 'admin' : authTab}
             currentUser={currentUser}
             onCustomerRegister={handleCustomerRegister}
-            onAdminGoogleSignIn={handleAdminGoogleSignIn}
+            onAdminLogin={handleAdminLogin}
             onSaveProfile={handleSaveCustomerProfile}
             onLogout={handleLogout}
             onNavigateAfterLogin={(role) =>
