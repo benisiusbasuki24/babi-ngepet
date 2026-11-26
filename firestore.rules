@@ -3,6 +3,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Global default deny safety net
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
@@ -26,14 +30,6 @@ service cloud.firestore {
 
     function isVerifiedSignedIn() {
       return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isVerifiedOwner(userId) {
-      return isVerifiedSignedIn() && request.auth.uid == userId;
     }
 
     function isBootstrappedAdmin() {
@@ -161,22 +157,11 @@ service cloud.firestore {
       allow delete: if isAdmin() && isValidId(menuId);
     }
 
-    // Customer Profiles (PII Isolated)
+    // Customer Profiles (Form-registered / Admin managed)
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if isSignedIn()
-        && isValidId(userId)
-        && isValidUserProfile(incoming())
-        && incoming().uid == request.auth.uid
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if (isOwner(userId) || isAdmin())
-        && isValidId(userId)
-        && isValidUserProfile(incoming())
-        && incoming().uid == existing().uid
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time;
+      allow get, list: if true;
+      allow create, update: if isValidId(userId)
+        && isValidUserProfile(incoming());
       allow delete: if isAdmin();
     }
 
@@ -187,62 +172,28 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin() && isValidId(adminId);
     }
 
-    function isRegisteredCustomer() {
-      return isVerifiedSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    // Orders (Registered Customer-owned + Admin POS managed)
+    // Orders (Customer-owned + Admin POS managed)
     match /orders/{orderId} {
-      allow get: if isSignedIn()
-        && isValidId(orderId)
-        && (isAdmin() || existing().userId == request.auth.uid);
-      allow list: if isVerifiedSignedIn()
-        && (isBootstrappedAdmin() || resource.data.userId == request.auth.uid);
-      allow create: if isVerifiedSignedIn()
-        && isValidId(orderId)
-        && isValidOrderShape(incoming())
-        && incoming().id == orderId
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time
-        && (
-          isAdmin() ||
-          (
-            isRegisteredCustomer()
-            && incoming().userId == request.auth.uid
-            && incoming().status == 'menunggu'
-            && incoming().paymentStatus == 'belum_bayar'
-            && incoming().source == 'whatsapp_web'
-            && !('receiptNumber' in incoming())
-            && !('paidAt' in incoming())
-          )
-        );
+      allow get, list: if true;
+      allow create: if isValidId(orderId)
+        && isValidOrderShape(incoming());
       allow update: if isAdmin()
-        && isValidId(orderId)
-        && isValidOrderShape(incoming())
-        && incoming().id == existing().id
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'status', 'paymentStatus', 'paymentMethod',
-          'receiptNumber', 'paidAt', 'updatedAt'
-        ]);
+        || (
+          isValidId(orderId)
+          && isValidOrderShape(incoming())
+          && incoming().id == existing().id
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+        );
       allow delete: if false;
     }
 
-    // Admin WhatsApp Notification Logs (Atomic with Order Creation)
+    // Admin WhatsApp Notification Logs
     match /notifications/{notifId} {
-      allow get: if isAdmin();
-      allow list: if isBootstrappedAdmin();
-      allow create: if isVerifiedSignedIn()
-        && isValidId(notifId)
-        && isValidNotification(incoming())
-        && incoming().id == notifId
-        && incoming().userId == request.auth.uid
-        && incoming().createdAt == request.time
-        && (isAdmin() || isRegisteredCustomer())
-        && existsAfter(/databases/$(database)/documents/orders/$(incoming().orderId));
+      allow get, list: if true;
+      allow create: if isValidId(notifId)
+        && isValidNotification(incoming());
       allow update, delete: if false;
     }
   }

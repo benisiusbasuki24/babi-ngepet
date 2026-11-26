@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { AdminKasirView } from './components/AdminKasirView';
 import { AuthView, type AuthTabMode } from './components/AuthView';
 import { BrandLogo } from './components/BrandLogo';
@@ -108,10 +108,32 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Firebase Auth state observer
+  // Initial check for local customer session & Firebase Auth observer
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (!fbUser) {
+        const localUid = localStorage.getItem('bn_customer_uid_v1');
+        if (localUid) {
+          try {
+            const profile = await fetchCustomerProfile(localUid);
+            if (profile && profile.name && profile.phone && profile.address) {
+              setCurrentUser({
+                id: localUid,
+                name: profile.name,
+                phone: profile.phone,
+                address: profile.address,
+                email: profile.email || '',
+                role: 'customer',
+                profileComplete: true,
+              });
+              setAuthReady(true);
+              return;
+            }
+          } catch (e) {
+            console.error('Gagal memuat profil customer lokal:', e);
+          }
+        }
+
         setCurrentUser(null);
         setOrders([]);
         setNotifications([]);
@@ -232,14 +254,15 @@ export default function App() {
     address: string;
     email?: string;
   }) => {
-    let uid = auth.currentUser?.uid;
+    let uid = localStorage.getItem('bn_customer_uid_v1');
     if (!uid) {
-      const cred = await signInAnonymously(auth);
-      uid = cred.user.uid;
+      uid = `cust_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
+      localStorage.setItem('bn_customer_uid_v1', uid);
     }
+    const customerEmail = data.email || `${uid}@warungbabingepet.local`;
     await saveCustomerProfile({
       uid,
-      email: data.email || '',
+      email: customerEmail,
       name: data.name,
       phone: data.phone,
       address: data.address,
@@ -250,7 +273,7 @@ export default function App() {
       name: data.name,
       phone: data.phone,
       address: data.address,
-      email: data.email || '',
+      email: customerEmail,
       role: 'customer',
       profileComplete: true,
     });
@@ -306,7 +329,13 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch {
+      // Ignore if not signed in with firebase auth
+    }
+    localStorage.removeItem('bn_customer_uid_v1');
+    setCurrentUser(null);
     setOrders([]);
     setNotifications([]);
     setActiveView('menu');
