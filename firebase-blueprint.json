@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "Item menu makanan dan minuman Warung Babi Ngepet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "category": { "type": "string", "enum": ["Lauk Satuan", "Paket Nasi", "Menu Kiloan", "Minuman & Tambahan"] },
+        "price": { "type": "number" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "portionInfo": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "imageUrl": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "available": { "type": "boolean" },
+        "featured": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "category", "price", "description", "portionInfo", "imageUrl", "available", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil pelanggan Warung Babi Ngepet (berisi PII, akses terbatas pemilik dan admin).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "phone": { "type": "string", "minLength": 8, "maxLength": 25 },
+        "address": { "type": "string", "minLength": 3, "maxLength": 400 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "phone", "address", "email", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Penanda akun Admin Kasir yang terverifikasi.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 200 },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Pesanan pelanggan atau kasir POS dengan status real-time dan rincian pembayaran.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderCode": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "receiptNumber": { "type": "string", "maxLength": 40 },
+        "customerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "customerPhone": { "type": "string", "minLength": 6, "maxLength": 25 },
+        "customerAddress": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "deliveryType": { "type": "string", "enum": ["delivery", "cod"] },
+        "deliveryTime": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "paymentMethod": { "type": "string", "enum": ["cod", "transfer", "qris", "tunai"] },
+        "paymentStatus": { "type": "string", "enum": ["belum_bayar", "lunas"] },
+        "status": { "type": "string", "enum": ["menunggu", "dimasak", "diantar", "selesai", "dibatalkan"] },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "total": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 300 },
+        "source": { "type": "string", "enum": ["whatsapp_web", "kasir_pos"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "paidAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "userId",
+        "orderCode",
+        "customerName",
+        "customerPhone",
+        "customerAddress",
+        "deliveryType",
+        "deliveryTime",
+        "paymentMethod",
+        "paymentStatus",
+        "status",
+        "items",
+        "subtotal",
+        "deliveryFee",
+        "total",
+        "source",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminNotificationLog": {
+      "title": "AdminNotificationLog",
+      "description": "Log notifikasi otomatis pesanan baru ke WhatsApp Admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderCode": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "adminPhone": { "type": "string", "minLength": 8, "maxLength": 25 },
+        "channel": { "type": "string", "enum": ["whatsapp_gateway", "whatsapp_deeplink"] },
+        "deliveryState": { "type": "string", "enum": ["terkirim", "siap_kirim", "gagal"] },
+        "messagePreview": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "waUrl": { "type": "string", "minLength": 10, "maxLength": 3000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "orderId", "orderCode", "userId", "adminPhone", "channel", "deliveryState", "messagePreview", "waUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/menu/{menuId}": {
+      "schema": { "$ref": "#/entities/MenuItem" },
+      "description": "Katalog menu Warung Babi Ngepet yang dapat dibaca publik dan dikelola oleh Admin."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Profil pelanggan terverifikasi berisi data kontak dan alamat pengantaran."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Daftar UID Admin Kasir Warung Babi Ngepet."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Pesanan online dan kasir POS dengan pelacakan status real-time."
+    },
+    "/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/AdminNotificationLog" },
+      "description": "Log notifikasi otomatis pesanan baru ke WhatsApp Admin."
+    }
+  }
+}

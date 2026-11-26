@@ -1,0 +1,6 @@
+{
+  "name": "Warung Babi Ngepet — Kasir & Pemesanan Online",
+  "description": "Aplikasi kasir POS dan pemesanan online Warung Babi Ngepet dengan integrasi WhatsApp admin otomatis, pelacakan status pesanan real-time, pilihan delivery & COD, keranjang belanja, repeat order, dan kwitansi digital.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

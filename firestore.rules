@@ -1,0 +1,250 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Shared hardened primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedSignedIn() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isVerifiedSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedSignedIn() && request.auth.token.email == 'order.bangben@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation helpers
+    function isValidMenuItem(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'category', 'price', 'description',
+          'portionInfo', 'imageUrl', 'available', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'category', 'price', 'description',
+          'portionInfo', 'imageUrl', 'available', 'featured', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 160
+        && data.category in ['Lauk Satuan', 'Paket Nasi', 'Menu Kiloan', 'Minuman & Tambahan']
+        && data.price is number && data.price > 0 && data.price <= 50000000
+        && data.description is string && data.description.size() >= 1 && data.description.size() <= 500
+        && data.portionInfo is string && data.portionInfo.size() >= 1 && data.portionInfo.size() <= 100
+        && data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 300
+        && data.available is bool
+        && (!('featured' in data) || data.featured is bool)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'phone', 'address', 'email', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.phone is string && data.phone.size() >= 8 && data.phone.size() <= 25
+        && data.address is string && data.address.size() >= 3 && data.address.size() <= 400
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOrderShape(data) {
+      return data.keys().hasAll([
+          'id', 'userId', 'orderCode', 'customerName', 'customerPhone',
+          'customerAddress', 'deliveryType', 'deliveryTime', 'paymentMethod',
+          'paymentStatus', 'status', 'items', 'subtotal', 'deliveryFee',
+          'total', 'source', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'orderCode', 'receiptNumber', 'customerName',
+          'customerPhone', 'customerAddress', 'deliveryType', 'deliveryTime',
+          'paymentMethod', 'paymentStatus', 'status', 'items', 'subtotal',
+          'deliveryFee', 'total', 'notes', 'source', 'createdAt',
+          'updatedAt', 'paidAt'
+        ])
+        && isValidId(data.id)
+        && isValidId(data.userId)
+        && data.orderCode is string && data.orderCode.size() >= 5 && data.orderCode.size() <= 40
+        && (!('receiptNumber' in data) || (data.receiptNumber is string && data.receiptNumber.size() <= 40))
+        && data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120
+        && data.customerPhone is string && data.customerPhone.size() >= 6 && data.customerPhone.size() <= 25
+        && data.customerAddress is string && data.customerAddress.size() >= 1 && data.customerAddress.size() <= 400
+        && data.deliveryType in ['delivery', 'cod']
+        && data.deliveryTime is string && data.deliveryTime.size() >= 1 && data.deliveryTime.size() <= 100
+        && data.paymentMethod in ['cod', 'transfer', 'qris', 'tunai']
+        && data.paymentStatus in ['belum_bayar', 'lunas']
+        && data.status in ['menunggu', 'dimasak', 'diantar', 'selesai', 'dibatalkan']
+        && data.items is list && data.items.size() >= 1 && data.items.size() <= 50
+        && data.items[0] is map
+        && data.subtotal is number && data.subtotal > 0
+        && data.deliveryFee is number && data.deliveryFee >= 0
+        && data.total is number && data.total == data.subtotal + data.deliveryFee
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 300))
+        && data.source in ['whatsapp_web', 'kasir_pos']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('paidAt' in data) || data.paidAt is timestamp);
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll([
+          'id', 'orderId', 'orderCode', 'userId', 'adminPhone',
+          'channel', 'deliveryState', 'messagePreview', 'waUrl', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'orderId', 'orderCode', 'userId', 'adminPhone',
+          'channel', 'deliveryState', 'messagePreview', 'waUrl', 'createdAt'
+        ])
+        && isValidId(data.id)
+        && isValidId(data.orderId)
+        && isValidId(data.userId)
+        && data.orderCode is string && data.orderCode.size() >= 5 && data.orderCode.size() <= 40
+        && data.adminPhone is string && data.adminPhone.size() >= 8 && data.adminPhone.size() <= 25
+        && data.channel in ['whatsapp_gateway', 'whatsapp_deeplink']
+        && data.deliveryState in ['terkirim', 'siap_kirim', 'gagal']
+        && data.messagePreview is string && data.messagePreview.size() >= 1 && data.messagePreview.size() <= 300
+        && data.waUrl is string && data.waUrl.size() >= 10 && data.waUrl.size() <= 3000
+        && data.createdAt is timestamp;
+    }
+
+    // Read-only startup connection probe
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+    }
+
+    // Menu Catalog
+    match /menu/{menuId} {
+      allow get, list: if true;
+      allow create: if isAdmin()
+        && isValidId(menuId)
+        && isValidMenuItem(incoming())
+        && incoming().id == menuId
+        && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+        && isValidId(menuId)
+        && isValidMenuItem(incoming())
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(menuId);
+    }
+
+    // Customer Profiles (PII Isolated)
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'address', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Admin Registry
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId) || isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create, update, delete: if isAdmin() && isValidId(adminId);
+    }
+
+    function isRegisteredCustomer() {
+      return isVerifiedSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Orders (Registered Customer-owned + Admin POS managed)
+    match /orders/{orderId} {
+      allow get: if isSignedIn()
+        && isValidId(orderId)
+        && (isAdmin() || existing().userId == request.auth.uid);
+      allow list: if isVerifiedSignedIn()
+        && (isBootstrappedAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isVerifiedSignedIn()
+        && isValidId(orderId)
+        && isValidOrderShape(incoming())
+        && incoming().id == orderId
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            isRegisteredCustomer()
+            && incoming().userId == request.auth.uid
+            && incoming().status == 'menunggu'
+            && incoming().paymentStatus == 'belum_bayar'
+            && incoming().source == 'whatsapp_web'
+            && !('receiptNumber' in incoming())
+            && !('paidAt' in incoming())
+          )
+        );
+      allow update: if isAdmin()
+        && isValidId(orderId)
+        && isValidOrderShape(incoming())
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'paymentStatus', 'paymentMethod',
+          'receiptNumber', 'paidAt', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Admin WhatsApp Notification Logs (Atomic with Order Creation)
+    match /notifications/{notifId} {
+      allow get: if isAdmin();
+      allow list: if isBootstrappedAdmin();
+      allow create: if isVerifiedSignedIn()
+        && isValidId(notifId)
+        && isValidNotification(incoming())
+        && incoming().id == notifId
+        && incoming().userId == request.auth.uid
+        && incoming().createdAt == request.time
+        && (isAdmin() || isRegisteredCustomer())
+        && existsAfter(/databases/$(database)/documents/orders/$(incoming().orderId));
+      allow update, delete: if false;
+    }
+  }
+}
