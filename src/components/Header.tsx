@@ -22,17 +22,10 @@ export const Header: React.FC<HeaderProps> = ({
     currentUser?.role === 'customer' && currentUser.profileComplete,
   );
 
-  const authLabel = currentUser
-    ? currentUser.profileComplete
-      ? 'Akun Saya'
-      : 'Lengkapi Profil'
-    : 'Masuk / Daftar';
-
   const navItems: Array<{ id: AppView; label: string }> = [
     { id: 'menu', label: 'Menu' },
     { id: 'track', label: 'Lacak Pesanan' },
-    { id: 'history', label: 'Histori' },
-    { id: 'auth', label: authLabel },
+    { id: 'history', label: 'Histori Pesanan' },
   ];
 
   return (
@@ -76,28 +69,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: Primary Action */}
         <div className="flex items-center shrink-0">
-          {isRegisteredCustomer ? (
-            <button
-              type="button"
-              onClick={onOpenCart}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#171615] px-4 py-2.5 text-sm font-medium text-[#F8F7F4] transition-colors hover:bg-[#2E2B29] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
-            >
-              <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-              <span>Keranjang</span>
-              <span className="font-mono text-xs tabular-nums text-[#F8F7F4]/90">
-                ({cartCount})
-              </span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onNavigate('auth')}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#C83E2B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#B23322] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
-            >
-              <UserPlus className="h-4 w-4" aria-hidden="true" />
-              <span>Daftar untuk Pesan</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onOpenCart}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#C83E2B] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#B23322] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
+          >
+            <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+            <span>Keranjang</span>
+            <span className="font-mono text-xs tabular-nums text-white/90">
+              ({cartCount})
+            </span>
+          </button>
         </div>
       </div>
 

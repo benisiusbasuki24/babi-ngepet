@@ -66,27 +66,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3 pt-4 border-t border-[#F0EDE6]">
-            {canOrder ? (
-              <a
-                href="#katalog-menu"
-                className="inline-flex items-center justify-center rounded-lg bg-[#C83E2B] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#B23322] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
-              >
-                Pilih Menu Sekarang
-              </a>
-            ) : (
-              <button
-                type="button"
-                onClick={onRequireAuth}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#C83E2B] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#B23322] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
-              >
-                <UserPlus className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  {needsProfileCompletion
-                    ? 'Lengkapi Registrasi Pelanggan'
-                    : 'Daftar / Masuk untuk Memesan'}
-                </span>
-              </button>
-            )}
+            <a
+              href="#katalog-menu"
+              className="inline-flex items-center justify-center rounded-lg bg-[#C83E2B] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#B23322] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C83E2B]"
+            >
+              Pilih Menu Sekarang
+            </a>
 
             <button
               type="button"
@@ -157,33 +142,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
         </div>
       </section>
 
-      {/* Registered-Customer Gate Banner */}
-      {!canOrder && (
-        <section className="flex flex-col gap-4 rounded-2xl border border-[#C83E2B]/30 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <Lock className="h-5 w-5 shrink-0 text-[#C83E2B] mt-0.5" aria-hidden="true" />
-            <div>
-              <h2 className="font-display text-base font-bold text-[#171615]">
-                {needsProfileCompletion
-                  ? 'Lengkapi Profil Pelanggan untuk Membuka Pemesanan'
-                  : 'Pemesanan Khusus Pelanggan Terdaftar'}
-              </h2>
-              <p className="mt-0.5 text-xs text-[#524E48]">
-                {needsProfileCompletion
-                  ? 'Anda sudah masuk dengan Google. Lengkapi nomor WhatsApp dan alamat pengantaran terlebih dahulu sebelum menambahkan menu ke keranjang.'
-                  : 'Anda dapat melihat seluruh daftar menu di bawah ini. Untuk melakukan pemesanan dan pengiriman ke WhatsApp Admin, silakan daftar atau masuk sebagai pelanggan.'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onRequireAuth}
-            className="rounded-lg bg-[#C83E2B] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#B23322] whitespace-nowrap shrink-0 transition-colors"
-          >
-            {needsProfileCompletion ? 'Lengkapi Profil Sekarang' : 'Masuk / Daftar Pelanggan'}
-          </button>
-        </section>
-      )}
+
 
       {/* Menu Catalog */}
       <section id="katalog-menu" className="space-y-6">
@@ -312,15 +271,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                       <span className="text-xs font-medium text-[#8A837A]">
                         Tidak tersedia
                       </span>
-                    ) : !canOrder ? (
-                      <button
-                        type="button"
-                        onClick={onRequireAuth}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3.5 py-2 text-xs font-semibold text-[#171615] transition-colors hover:bg-[#ECE8E0] whitespace-nowrap shrink-0"
-                      >
-                        <Lock className="h-3 w-3 text-[#C83E2B]" aria-hidden="true" />
-                        <span>Daftar untuk Pesan</span>
-                      </button>
                     ) : qty === 0 ? (
                       <button
                         type="button"

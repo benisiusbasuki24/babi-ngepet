@@ -70,18 +70,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const [submittedOrder, setSubmittedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    if (currentUser && currentUser.role === 'customer') {
-      setCustomerName(currentUser.name);
-      setCustomerPhone(currentUser.phone);
-      setCustomerAddress(currentUser.address);
+    try {
+      const saved = localStorage.getItem('bn_customer_info_v1');
+      if (saved) {
+        const info = JSON.parse(saved) as { name?: string; phone?: string; address?: string };
+        if (info.name && !customerName) setCustomerName(info.name);
+        if (info.phone && !customerPhone) setCustomerPhone(info.phone);
+        if (info.address && !customerAddress) setCustomerAddress(info.address);
+      }
+    } catch {
+      // ignore
     }
-  }, [currentUser]);
+  }, []);
 
   if (!isOpen) return null;
-
-  const isRegisteredCustomer = Boolean(
-    currentUser?.role === 'customer' && currentUser.profileComplete,
-  );
 
   const subtotal = cart.reduce(
     (sum, item) => sum + item.menuItem.price * item.quantity,
@@ -103,27 +105,42 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
-    if (!isRegisteredCustomer || !currentUser) {
-      setErrorMsg('Hanya pelanggan terdaftar yang dapat melakukan pemesanan.');
-      return;
-    }
     if (cart.length === 0) {
       setErrorMsg('Keranjang belanja Anda masih kosong.');
       return;
     }
-    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
-      setErrorMsg('Mohon lengkapi nama, nomor WhatsApp, dan alamat pengantaran.');
+    const cleanName = customerName.trim();
+    const cleanPhone = customerPhone.trim();
+    const cleanAddress = customerAddress.trim();
+
+    if (!cleanName || cleanPhone.replace(/\D/g, '').length < 6 || cleanAddress.length < 3) {
+      setErrorMsg('Mohon lengkapi Nama, Nomor WhatsApp aktif, dan Alamat Pengantaran.');
       return;
+    }
+
+    let customerUid = localStorage.getItem('bn_customer_uid_v1');
+    if (!customerUid) {
+      customerUid = `guest_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
+      localStorage.setItem('bn_customer_uid_v1', customerUid);
+    }
+
+    try {
+      localStorage.setItem(
+        'bn_customer_info_v1',
+        JSON.stringify({ name: cleanName, phone: cleanPhone, address: cleanAddress })
+      );
+    } catch {
+      // ignore
     }
 
     setSubmitting(true);
     try {
       const createdOrder = await createOrderAtomicInFirestore({
-        userId: currentUser.id,
+        userId: currentUser?.id || customerUid,
         menuCatalog,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerAddress: customerAddress.trim(),
+        customerName: cleanName,
+        customerPhone: cleanPhone,
+        customerAddress: cleanAddress,
         deliveryType,
         deliveryDate,
         deliveryTime,
@@ -182,29 +199,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
         {/* Drawer Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {!isRegisteredCustomer ? (
-            <div className="rounded-xl border border-[#C83E2B]/30 bg-white p-6 text-center space-y-4">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#C83E2B]/10 text-[#C83E2B]">
-                <Lock className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <h3 className="font-display text-base font-bold text-[#171615]">
-                  Pemesanan Khusus Pelanggan Terdaftar
-                </h3>
-                <p className="mt-1.5 text-sm text-[#524E48]">
-                  Masuk dan lengkapi registrasi akun pelanggan (Nama, No. WhatsApp,
-                  Alamat) terlebih dahulu untuk melakukan pemesanan.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenRegistration}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-[#C83E2B] px-5 py-3 text-sm font-semibold text-white hover:bg-[#B23322]"
-              >
-                Masuk &amp; Lengkapi Registrasi Pelanggan
-              </button>
-            </div>
-          ) : submittedOrder ? (
+          {submittedOrder ? (
             <div className="space-y-5">
               <div className="rounded-xl border border-[#15803D]/30 bg-white p-5 space-y-3">
                 <div className="flex items-start gap-3">
@@ -547,7 +542,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         </div>
 
         {/* Sticky Checkout Footer */}
-        {isRegisteredCustomer && !submittedOrder && cart.length > 0 && (
+        {!submittedOrder && cart.length > 0 && (
           <div className="border-t border-[#E5E2DC] bg-white p-5 space-y-3">
             <div className="space-y-1 text-sm">
               <div className="flex justify-between text-[#5E5A54]">
