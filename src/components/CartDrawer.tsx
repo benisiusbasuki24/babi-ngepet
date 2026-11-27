@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
+  Calendar,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -24,6 +25,8 @@ import {
   ADMIN_WA_DISPLAY,
   buildAdminOrderWhatsAppUrl,
   formatRupiah,
+  getWibDeliveryDateOptions,
+  DELIVERY_SLOTS_WIB,
 } from '../utils/format';
 
 interface CartDrawerProps {
@@ -40,15 +43,6 @@ interface CartDrawerProps {
   onOpenRegistration: () => void;
 }
 
-const DELIVERY_SLOTS = [
-  'Secepatnya (± 30–45 Menit)',
-  '11:00 – 12:00 WITA (Makan Siang)',
-  '12:30 – 13:30 WITA (Siang)',
-  '15:00 – 16:00 WITA (Sore)',
-  '17:30 – 18:30 WITA (Makan Malam)',
-  '19:00 – 20:30 WITA (Malam)',
-];
-
 export const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen,
   onClose,
@@ -62,11 +56,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onGoToTracking,
   onOpenRegistration,
 }) => {
+  const dateOptions = useMemo(() => getWibDeliveryDateOptions(), []);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('delivery');
-  const [deliveryTime, setDeliveryTime] = useState(DELIVERY_SLOTS[0]);
+  const [deliveryDate, setDeliveryDate] = useState(dateOptions[0].value);
+  const [deliveryTime, setDeliveryTime] = useState(DELIVERY_SLOTS_WIB[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('transfer');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -129,6 +125,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         customerPhone: customerPhone.trim(),
         customerAddress: customerAddress.trim(),
         deliveryType,
+        deliveryDate,
         deliveryTime,
         paymentMethod,
         notes: notes.trim(),
@@ -390,12 +387,36 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                 <div>
                   <label
+                    htmlFor="delivery-date"
+                    className="block text-xs font-semibold text-[#171615] mb-1.5"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-[#C83E2B]" />
+                      Hari &amp; Tanggal Pengantaran (WIB)
+                    </span>
+                  </label>
+                  <select
+                    id="delivery-date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className="w-full rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3 py-2.5 text-sm font-semibold text-[#171615] focus:border-[#C83E2B] focus:outline-none"
+                  >
+                    {dateOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
                     htmlFor="delivery-time"
                     className="block text-xs font-semibold text-[#171615] mb-1.5"
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-[#C83E2B]" />
-                      Pilihan Waktu Pengantaran
+                      Pilihan Waktu Pengantaran (WIB)
                     </span>
                   </label>
                   <select
@@ -404,7 +425,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     onChange={(e) => setDeliveryTime(e.target.value)}
                     className="w-full rounded-lg border border-[#DCD7CE] bg-[#F8F7F4] px-3 py-2.5 text-sm text-[#171615] focus:border-[#C83E2B] focus:outline-none"
                   >
-                    {DELIVERY_SLOTS.map((slot) => (
+                    {DELIVERY_SLOTS_WIB.map((slot) => (
                       <option key={slot} value={slot}>
                         {slot}
                       </option>

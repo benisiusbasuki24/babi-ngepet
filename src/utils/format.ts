@@ -80,6 +80,56 @@ export function getPaymentMethodLabel(method: PaymentMethod): string {
   }
 }
 
+export function getWibDeliveryDateOptions(): Array<{
+  label: string;
+  value: string;
+  day: string;
+}> {
+  const options = [];
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const months = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+    // WIB is UTC+7
+    const wibTime = new Date(utc + 3600000 * 7 + i * 86400000);
+
+    const dayName = days[wibTime.getDay()];
+    const dateNum = wibTime.getDate();
+    const monthName = months[wibTime.getMonth()];
+    const yearNum = wibTime.getFullYear();
+
+    const value = `${dayName}, ${dateNum} ${monthName} ${yearNum}`;
+    const label =
+      i === 0 ? `Hari Ini — ${value}` : i === 1 ? `Besok — ${value}` : value;
+    options.push({ label, value, day: dayName });
+  }
+  return options;
+}
+
+export const DELIVERY_SLOTS_WIB = [
+  'Secepatnya (± 30–45 Menit)',
+  '11:00 – 12:00 WIB (Makan Siang)',
+  '12:30 – 13:30 WIB (Siang)',
+  '15:00 – 16:00 WIB (Sore)',
+  '17:30 – 18:30 WIB (Makan Malam)',
+  '19:00 – 20:30 WIB (Malam)',
+];
+
 export function buildAdminOrderWhatsAppMessage(order: Order): string {
   const lines = order.items
     .map(
@@ -102,6 +152,7 @@ export function buildAdminOrderWhatsAppMessage(order: Order): string {
     ``,
     `*Pengantaran & Pembayaran:*`,
     `Layanan: ${getDeliveryLabel(order.deliveryType)}`,
+    `Hari & Tanggal: ${order.deliveryDate || 'Hari Ini (WIB)'}`,
     `Waktu Antar: ${order.deliveryTime}`,
     `Metode Bayar: ${getPaymentMethodLabel(order.paymentMethod)}`,
     ``,
@@ -140,7 +191,7 @@ export function buildCustomerReceiptWhatsAppMessage(order: Order): string {
     `Tanggal Lunas: ${formatDateTime(order.paidAt || order.updatedAt)}`,
     ``,
     `Kepada: *${order.customerName}* (${order.customerPhone})`,
-    `Layanan: ${getDeliveryLabel(order.deliveryType)} · ${order.deliveryTime}`,
+    `Layanan: ${getDeliveryLabel(order.deliveryType)} · ${order.deliveryDate || ''} (${order.deliveryTime})`,
     `Metode Bayar: ${getPaymentMethodLabel(order.paymentMethod)}`,
     ``,
     `*Rincian Item:*`,

@@ -60,6 +60,7 @@ export interface Order {
   customerPhone: string;
   customerAddress: string;
   deliveryType: DeliveryType;
+  deliveryDate?: string;
   deliveryTime: string;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;

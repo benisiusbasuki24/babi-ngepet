@@ -93,7 +93,7 @@ export const KwitansiModal: React.FC<KwitansiModalProps> = ({ order, onClose }) 
                 Lunas: {formatDateTime(order.paidAt || order.updatedAt)}
               </p>
               <p className="text-[#524E48]">
-                {getDeliveryLabel(order.deliveryType)} · {order.deliveryTime}
+                {getDeliveryLabel(order.deliveryType)} · {order.deliveryDate ? `${order.deliveryDate} — ` : ''}{order.deliveryTime}
               </p>
               <p className="font-medium text-[#171615]">
                 Bayar: {getPaymentMethodLabel(order.paymentMethod)}

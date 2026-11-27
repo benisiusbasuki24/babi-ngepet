@@ -426,6 +426,7 @@ function mapOrderDoc(id: string, data: Record<string, unknown>): Order {
     customerPhone: String(data.customerPhone || ''),
     customerAddress: String(data.customerAddress || ''),
     deliveryType: (data.deliveryType as DeliveryType) || 'delivery',
+    deliveryDate: data.deliveryDate ? String(data.deliveryDate) : undefined,
     deliveryTime: String(data.deliveryTime || ''),
     paymentMethod: (data.paymentMethod as PaymentMethod) || 'transfer',
     paymentStatus: (data.paymentStatus as PaymentStatus) || 'belum_bayar',
@@ -503,6 +504,7 @@ export async function createOrderAtomicInFirestore(params: {
   customerPhone: string;
   customerAddress: string;
   deliveryType: DeliveryType;
+  deliveryDate?: string;
   deliveryTime: string;
   paymentMethod: PaymentMethod;
   notes?: string;
@@ -555,6 +557,7 @@ export async function createOrderAtomicInFirestore(params: {
   const cleanPhone = params.customerPhone.trim().slice(0, 25);
   const cleanAddress = (params.customerAddress.trim() || 'Ambil di Warung').slice(0, 400);
   const cleanNotes = params.notes?.trim().slice(0, 300);
+  const cleanDeliveryDate = (params.deliveryDate || '').trim().slice(0, 100);
 
   const localOrder: Order = {
     id: orderId,
@@ -565,6 +568,7 @@ export async function createOrderAtomicInFirestore(params: {
     customerPhone: cleanPhone,
     customerAddress: cleanAddress,
     deliveryType: params.deliveryType,
+    ...(cleanDeliveryDate ? { deliveryDate: cleanDeliveryDate } : {}),
     deliveryTime: params.deliveryTime.trim().slice(0, 100),
     paymentMethod: params.paymentMethod,
     paymentStatus: isPaidImmediately ? 'lunas' : 'belum_bayar',
@@ -631,6 +635,9 @@ export async function createOrderAtomicInFirestore(params: {
     updatedAt: serverTimestamp(),
   };
 
+  if (cleanDeliveryDate) {
+    firestoreOrderPayload.deliveryDate = cleanDeliveryDate;
+  }
   if (cleanNotes) {
     firestoreOrderPayload.notes = cleanNotes;
   }

@@ -327,9 +327,9 @@ export const OrderTrackingView: React.FC<OrderTrackingViewProps> = ({
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-[#6B655E]">Waktu Antar</span>
+                <span className="text-[#6B655E]">Hari &amp; Waktu Antar</span>
                 <span className="font-medium text-[#171615] text-right">
-                  {activeOrder.deliveryTime}
+                  {activeOrder.deliveryDate ? `${activeOrder.deliveryDate} — ${activeOrder.deliveryTime}` : activeOrder.deliveryTime}
                 </span>
               </div>
               <div className="flex justify-between gap-4">

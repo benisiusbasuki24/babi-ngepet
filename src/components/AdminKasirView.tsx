@@ -39,6 +39,8 @@ import {
   getDeliveryLabel,
   getOrderStatusLabel,
   getPaymentMethodLabel,
+  getWibDeliveryDateOptions,
+  DELIVERY_SLOTS_WIB,
 } from '../utils/format';
 import { BrandLogo } from './BrandLogo';
 
@@ -69,6 +71,7 @@ interface AdminKasirViewProps {
     customerPhone: string;
     customerAddress: string;
     deliveryType: DeliveryType;
+    deliveryDate: string;
     deliveryTime: string;
     paymentMethod: PaymentMethod;
     markPaid: boolean;
@@ -136,10 +139,13 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
   const [syncingDefault, setSyncingDefault] = useState(false);
 
   // Manual Kasir POS Form State
+  const dateOptions = useMemo(() => getWibDeliveryDateOptions(), []);
   const [posName, setPosName] = useState('');
   const [posPhone, setPosPhone] = useState('');
   const [posAddress, setPosAddress] = useState('Ambil di Warung / Makan di Tempat');
   const [posDeliveryType, setPosDeliveryType] = useState<DeliveryType>('delivery');
+  const [posDeliveryDate, setPosDeliveryDate] = useState(dateOptions[0].value);
+  const [posDeliveryTime, setPosDeliveryTime] = useState(DELIVERY_SLOTS_WIB[0]);
   const [posPaymentMethod, setPosPaymentMethod] = useState<PaymentMethod>('tunai');
   const [posMarkPaid, setPosMarkPaid] = useState(true);
   const [posQuantities, setPosQuantities] = useState<Record<string, number>>({});
@@ -330,7 +336,8 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
         customerPhone: posPhone.trim(),
         customerAddress: posAddress.trim() || 'Makan di Tempat',
         deliveryType: posDeliveryType,
-        deliveryTime: 'Secepatnya (± 30–45 Menit)',
+        deliveryDate: posDeliveryDate,
+        deliveryTime: posDeliveryTime,
         paymentMethod: posPaymentMethod,
         markPaid: posMarkPaid,
         items,
@@ -610,7 +617,7 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
                         <div>
                           <p className="font-mono text-xs text-slate-500">
                             {order.orderCode} · {formatDateTime(order.createdAt)} ·{' '}
-                            {getDeliveryLabel(order.deliveryType)} ({order.deliveryTime})
+                            {getDeliveryLabel(order.deliveryType)} · {order.deliveryDate || 'Hari Ini (WIB)'} ({order.deliveryTime})
                           </p>
                           <h2 className="mt-1 font-display text-lg font-bold text-slate-900">
                             {order.customerName}{' '}
@@ -1220,6 +1227,41 @@ export const AdminKasirView: React.FC<AdminKasirViewProps> = ({
                   onChange={(e) => setPosAddress(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:border-[#C83E2B] focus:outline-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Hari &amp; Tanggal Pengantaran (WIB)
+                  </label>
+                  <select
+                    value={posDeliveryDate}
+                    onChange={(e) => setPosDeliveryDate(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
+                  >
+                    {dateOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Waktu Pengantaran (WIB)
+                  </label>
+                  <select
+                    value={posDeliveryTime}
+                    onChange={(e) => setPosDeliveryTime(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
+                  >
+                    {DELIVERY_SLOTS_WIB.map((slot) => (
+                      <option key={slot} value={slot}>
+                        {slot}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
